@@ -104,7 +104,14 @@ io.on("connection", (socket) => {
     // Users online
     io.emit("users-online", users.length);
 
-    io.to(user.roomId).emit("user-joined", user);
+    // Send room to user
+    io.to(user.roomId).emit("room", room);
+  });
+
+  socket.on("get-room", (roomId) => {
+    const room = rooms.find((r) => r.roomId === roomId);
+    if (!room) return;
+    io.to(room.roomId).emit("room", room);
   });
 
   socket.on("disconnect", () => {
