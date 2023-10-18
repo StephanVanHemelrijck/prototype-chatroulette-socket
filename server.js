@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
     roomId: "",
   };
 
-  socket.on("start-call", (username) => {
+  socket.on("room-join", (username) => {
     user.username = username;
 
     /**
@@ -98,14 +98,23 @@ io.on("connection", (socket) => {
     // Add user to users array
     users.push(user);
 
-    console.log("Room before started-call", room);
-
-    socket.emit("started-call", room);
+    socket.emit("room-joined", room);
     // Users online
     io.emit("users-online", users.length);
 
     // Send room to user
     io.to(user.roomId).emit("room", room);
+  });
+
+  socket.on("room-prepare", (roomId) => {
+    // Find room
+    const room = rooms.find((r) => r.roomId === roomId);
+
+    // Assign host and guest
+    const host = room.users[0];
+    const guest = room.users[1];
+    room.users[0].role = "host";
+    room.users[1].role = "guest";
   });
 
   socket.on("get-room", (roomId) => {
