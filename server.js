@@ -106,15 +106,55 @@ io.on("connection", (socket) => {
     io.to(user.roomId).emit("room", room);
   });
 
-  socket.on("room-prepare", (roomId) => {
+  socket.on("room-prepare", (room) => {
+    // Find room
+    const r = rooms.find((r) => r.roomId === room.roomId);
+
+    // Assign host and guest
+    room.users[0].role = "host";
+    room.users[1].role = "guest";
+
+    // Update room
+    const roomIndex = rooms.findIndex((r) => r.roomId === room.roomId);
+
+    if (roomIndex !== -1) {
+      rooms[roomIndex] = room;
+    }
+
+    socket.to(room.roomId).emit("room-prepared", room);
+  });
+
+  socket.on("room-ready", (roomId) => {
     // Find room
     const room = rooms.find((r) => r.roomId === roomId);
 
-    // Assign host and guest
-    const host = room.users[0];
-    const guest = room.users[1];
-    room.users[0].role = "host";
-    room.users[1].role = "guest";
+    socket.to(roomId).emit("room-ready", room);
+  });
+
+  socket.on("ice-candidate", (candidate, roomId) => {
+    socket.broadcast.to(roomId).emit("ice-candidate", candidate);
+  });
+
+  // Triggered when server gets an offer from a peer in the room.
+  socket.on("offer", (offer, roomId) => {
+    socket.broadcast.to(roomId).emit("offer", offer); // Sends Offer to the other peer in the room.
+  });
+
+  // Triggered when server gets an answer from a peer in the room.
+  socket.on("answer", (answer, roomId) => {
+    socket.broadcast.to(roomId).emit("answer", answer); // Sends Answer to the other peer in the room.
+  });
+
+  socket.on("room-leave", (roomId, username) => {
+    socket.leave(roomId);
+
+    // Find user and remove from room
+    const user = users.find((u) => u.username === username);
+
+    leaveRoom(user);
+
+    // Emit to all users in room that user left
+    socket.broadcast.to(roomId).emit("room-left");
   });
 
   socket.on("get-room", (roomId) => {
@@ -139,8 +179,6 @@ io.on("connection", (socket) => {
     if (index !== -1) {
       users.splice(index, 1);
     }
-
-    console.log(`User with socket ID: ${socket.id} disconnected`);
 
     // Repeated actions
     io.emit("users-online", users.length);
