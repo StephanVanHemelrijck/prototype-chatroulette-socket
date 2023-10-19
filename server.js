@@ -155,6 +155,16 @@ io.on("connection", (socket) => {
 
     // Emit to all users in room that user left
     socket.broadcast.to(roomId).emit("room-left");
+
+    // Remove user from users array
+    const index = users.findIndex((u) => u.socketId === socket.id);
+
+    if (index !== -1) {
+      users.splice(index, 1);
+    }
+
+    // Repeated actions
+    io.emit("users-online", users.length);
   });
 
   socket.on("get-room", (roomId) => {
